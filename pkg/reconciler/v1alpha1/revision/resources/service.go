@@ -28,19 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var (
-	servicePorts = []corev1.ServicePort{{
-		Name:       ServicePortName,
-		Protocol:   corev1.ProtocolTCP,
-		Port:       ServicePort,
-		TargetPort: intstr.FromString(v1alpha1.RequestQueuePortName),
-	}, {
-		Name:       MetricsPortName,
-		Protocol:   corev1.ProtocolTCP,
-		Port:       MetricsPort,
-		TargetPort: intstr.FromString(v1alpha1.RequestQueueMetricsPortName),
-	}}
-)
+var ()
 
 // MakeK8sService creates a Kubernetes Service that targets all pods with the same
 // serving.RevisionLabelKey label. Traffic is routed to queue-proxy port.
@@ -56,10 +44,24 @@ func MakeK8sService(rev *v1alpha1.Revision) *corev1.Service {
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(rev)},
 		},
 		Spec: corev1.ServiceSpec{
-			Ports: servicePorts,
+			Ports: []corev1.ServicePort{{
+				Name:       ServicePortName(rev),
+				Protocol:   corev1.ProtocolTCP,
+				Port:       ServicePort,
+				TargetPort: intstr.IntOrString{Type: intstr.String, StrVal: queue.RequestQueuePortName},
+			}},
 			Selector: map[string]string{
 				serving.RevisionLabelKey: rev.Name,
 			},
 		},
 	}
+}
+
+func ServicePortName(rev *v1alpha1.Revision) string {
+	ports := rev.Spec.Container.Ports
+	if len(ports) > 0 && ports[0].Name == "h2c" {
+		return "http2"
+	}
+
+	return "http1"
 }

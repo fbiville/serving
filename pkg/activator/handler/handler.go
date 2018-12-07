@@ -54,6 +54,15 @@ func (a *ActivationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	b, err := httputil.DumpRequest(r, false)
+	if err != nil {
+		http.Error(w, err.Error(), 200)
+	} else {
+		http.Error(w, string(b), 200)
+	}
+
+	return
+
 	target := &url.URL{
 		Scheme: "http",
 		Host:   fmt.Sprintf("%s:%d", ar.Endpoint.FQDN, ar.Endpoint.Port),
